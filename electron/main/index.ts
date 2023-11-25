@@ -3,6 +3,9 @@ import { release } from 'node:os'
 import { join } from 'node:path'
 import dgram from 'dgram'
 
+const ADDR = '127.0.0.1'
+const PORT = 41235
+
 // The built directory structure
 //
 // ├─┬ dist-electron
@@ -85,9 +88,21 @@ async function createWindow() {
 app.whenReady().then(() => {
   ipcMain.on('comm:makeRequest', (_, method, args) => {
     socket.send(JSON.stringify({
-      method,
-      args
-    }), 65432, '127.0.0.1')
+      type: 'REQUEST',
+      payload: {
+        method,
+        args
+    }}), PORT, ADDR)
+  })
+
+  ipcMain.on('comm:sendResponse', (_, failed, responseTo, message) => {
+    socket.send(JSON.stringify({
+      type: 'RESPONSE',
+      payload: {
+        responseTo,
+        failed,
+        message
+    }}), PORT, ADDR)
   })
   createWindow()
 })
@@ -142,8 +157,4 @@ socket.on('message', (msg, rinfo) => {
   win.webContents.send('comm:messageRecieved', JSON.parse(msg.toString()))
 })
 
-try {
-  socket.bind(41234)
-} catch {
-  socket.bind(41235)
-}
+socket.bind(PORT)

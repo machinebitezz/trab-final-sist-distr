@@ -10,13 +10,15 @@ declare interface response {
   type: 'RESPONSE',
   payload: {
     failed: boolean
-    message: string
+    responseTo: string
+    message: any
   }
 }
 
 declare interface Window {
   electron: {
-    makeRequest: (method: string, payload: any[]) => void,
+    makeRequest: (method: string, args: any[]) => void,
+    sendResponse: (failed: boolean, responseTo: string, message: any) => void,
     onMessageRecieved: (callback: (_: any, msg: request | response) => void) => void
   }
 }

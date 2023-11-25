@@ -1,29 +1,68 @@
 <script setup lang="ts">
-  defineProps<{
-    grid: number[][]
-  }>()
+import { PlacingInfo } from './types'
+
+const props = defineProps<{
+  grid: number[][]
+  placing?: PlacingInfo
+}>()
+
+const $emit = defineEmits(['click'])
+
+function handleClick(event: { i: number, j: number }) {
+  $emit('click', event)
+}
 </script>
 
 <template>
   <div>
-    <div class="row" v-for="(row, index) in grid" :key="index">
-      <span :class="`square type-${col}`" v-for="(col, index) in row" :key="index" />
+    <span class="letter" v-for="i in grid.length">
+      {{ String.fromCharCode(96 + i).toUpperCase() }}
+    </span>
+    <div class="row" v-for="(row, i) in grid" :key="i">
+      <span class="number">{{ i + 1 }}</span>
+      <span 
+        :class="`square type-${col}`"
+        :key="j" 
+        v-for="(col, j) in row"
+        @click="handleClick({
+          i,
+          j
+        })"
+      />
     </div>
   </div>
 </template>
 
-<style>
+<style scoped>
 .row {
   margin: 0;
   padding: 0;
   height: 40px;
 }
 
+.letter {
+  display: inline-block;
+  width: 40px;
+  height: 40px;
+  border: 1px solid #00000050;
+  position: relative;
+  left: 20px;
+}
+
+.number {
+  display: inline-block;
+  height: 40px;
+  width: 40px;
+  border: 1px solid #00000050;
+  position: relative;
+  top: -20px;
+  padding: 2px 4px;
+}
+
 .square {
   display: inline-block;
   width: 40px;
   height: 40px;
-  background-color: #dfdfdf;
   border: 1px solid black;
 }
 
