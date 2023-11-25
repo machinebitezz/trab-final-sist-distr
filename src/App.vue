@@ -7,8 +7,11 @@ import { ship, PlacingInfo } from './components/types'
 // peparar as grades
 const boardSize = 9
 const row = Array(boardSize).fill('water')
-const playerGrid = ref(Array(boardSize).fill([]))
-const enemyGrid = ref(Array(boardSize).fill([]))
+const playerGrid = ref<string[][]>(Array(boardSize).fill([]))
+const enemyGrid = ref<string[][]>(Array(boardSize).fill([]))
+const playerTurn = ref<boolean | null>(null)
+
+let hits = 0
 
 playerGrid.value.forEach((_, index) => {
   playerGrid.value[index] = row.map(x => x)
@@ -122,6 +125,18 @@ function handlePlace({i, j}: { i: number, j: number }) {
   }
 
   shipInfo.value[placing.value.piece].left -= 1
+
+  if (allPlaced()) {
+    window.electron.makeRequest('check-done', [])
+  }
+}
+
+function allPlaced() {
+  return Object.keys(shipInfo.value).reduce((acc, _ship) => {
+    const ship = shipInfo.value[(_ship as ship)]
+
+    return ship.left === 0 && acc
+  }, true)
 }
 
 function handleGuess({i, j}: { i: number, j: number }) {
@@ -131,29 +146,73 @@ function handleGuess({i, j}: { i: number, j: number }) {
 }
 
 // lógica de mensagem
-window.electron.onMessageRecieved((_, msg) => {
-  if (msg.type === 'REQUEST') {
-    if (msg.payload.method === 'guess') {
-      const [i, j] = msg.payload.args
-      const hit = playerGrid.value[i][j] === 'ship'
+window.electron.onRequestRecieved('guess', (msg) => {
+  if (allPlaced()) {
+    const [i, j] = msg.payload.args
+    const hit = playerGrid.value[i][j] === 'ship'
 
-      playerGrid.value[i][j] = hit ? 'hit-ship' : 'miss'
+    playerGrid.value[i][j] = hit ? 'hit-ship' : 'miss'
 
-      window.electron.sendResponse(false, 'guess', {
-        coords: [i, j],
-        result: hit
-      })
-    }
-  } else if (msg.type === 'RESPONSE' && !msg.payload.failed) {
-    if (msg.payload.responseTo === 'guess') {
-      const [i, j] = msg.payload.message.coords
-
-      enemyGrid.value[i][j] = msg.payload.message.result ? 'hit' : 'miss'
-    }
-  } else {
-    alert('oops')
+    window.electron.sendResponse(false, 'guess', {
+      coords: [i, j],
+      result: hit
+    })
   }
 })
+
+window.electron.onRequestRecieved('check-win', (msg) => {
+  console.log('aq')
+  let allSunk = 0
+
+  playerGrid.value.forEach((row) => {
+    row.forEach((tile) => {
+      if (tile === 'hit-ship') {
+        allSunk += 1
+      }
+    })
+  })
+
+  window.electron.sendResponse(false, 'check-win', allSunk === 21)
+})
+
+window.electron.onRequestRecieved('check-done', (msg) => {
+  window.electron.sendResponse(false, 'check-done', allPlaced())
+})
+
+window.electron.onResponseRecieved('guess', (msg) => {
+  const [i, j] = msg.payload.message.coords
+  const hit = msg.payload.message.result
+
+  if (hit) {
+    hits += 1
+
+    if (hits === 21) {
+      window.electron.makeRequest('check-win', [])
+      alert('Você Perdeu')
+      window.location.reload()
+    }
+  }
+  console.log(hits)
+
+  enemyGrid.value[i][j] = hit ? 'hit' : 'miss'
+})
+
+window.electron.onResponseRecieved('check-win', (msg) => {
+  if (msg.payload.message) {
+    alert('Você Ganhou')
+    window.location.reload()
+  }
+})
+
+window.electron.onResponseRecieved('check-done', (msg) => {
+  if (!msg.payload.message) {
+    alert('Você terminou de montar o tabuleiro primeiro e será o primeiro a jogar')
+    playerTurn.value = true
+  } else {
+    alert('Você não terminou de montar o tabuleiro em primeiro e será o segundo a jogar')
+  }
+})
+
 </script>
 
 <template>

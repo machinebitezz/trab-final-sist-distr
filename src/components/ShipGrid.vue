@@ -2,7 +2,7 @@
 import { PlacingInfo } from './types'
 
 const props = defineProps<{
-  grid: number[][]
+  grid: string[][]
   placing?: PlacingInfo
 }>()
 

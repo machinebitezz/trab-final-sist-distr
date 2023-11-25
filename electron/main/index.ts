@@ -3,7 +3,7 @@ import { release } from 'node:os'
 import { join } from 'node:path'
 import dgram from 'dgram'
 
-const ADDR = '192.168.18.7'
+const ADDR = '127.0.0.1'
 const PORT = 41235
 
 // The built directory structure
@@ -86,24 +86,6 @@ async function createWindow() {
 }
 
 app.whenReady().then(() => {
-  ipcMain.on('comm:makeRequest', (_, method, args) => {
-    socket.send(JSON.stringify({
-      type: 'REQUEST',
-      payload: {
-        method,
-        args
-    }}), PORT, ADDR)
-  })
-
-  ipcMain.on('comm:sendResponse', (_, failed, responseTo, message) => {
-    socket.send(JSON.stringify({
-      type: 'RESPONSE',
-      payload: {
-        responseTo,
-        failed,
-        message
-    }}), PORT, ADDR)
-  })
   createWindow()
 })
 
@@ -152,9 +134,33 @@ socket.on('listening', () => {
   console.log(`socket listening ${address.address}:${address.port}`)
 })
 
+ipcMain.on('comm:makeRequest', (_, method, args) => {
+  socket.send(JSON.stringify({
+    type: 'REQUEST',
+    payload: {
+      method,
+      args
+  }}), PORT, ADDR)
+})
+
+ipcMain.on('comm:sendResponse', (_, failed, responseTo, message) => {
+  socket.send(JSON.stringify({
+    type: 'RESPONSE',
+    payload: {
+      responseTo,
+      failed,
+      message
+  }}), PORT, ADDR)
+})
+
 socket.on('message', (msg, rinfo) => {
   console.log(`socket got: ${msg} from ${rinfo.address}:${rinfo.port}`)
-  win.webContents.send('comm:messageRecieved', JSON.parse(msg.toString()))
+  const message = JSON.parse(msg.toString())
+  if (message.type === 'REQUEST') {
+    win.webContents.send('comm:requestRecieved', [message, message.payload.method])
+  } else if (message.type === 'RESPONSE') {
+    win.webContents.send('comm:responseRecieved', [message, message.payload.responseTo])
+  }
 })
 
 socket.bind(PORT)
