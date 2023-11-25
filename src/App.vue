@@ -6,7 +6,7 @@ import { ship, PlacingInfo } from './components/types'
 
 // peparar as grades
 const boardSize = 9
-const row = Array(boardSize).fill(0)
+const row = Array(boardSize).fill('water')
 const playerGrid = ref(Array(boardSize).fill([]))
 const enemyGrid = ref(Array(boardSize).fill([]))
 
@@ -100,12 +100,12 @@ function handlePlace({i, j}: { i: number, j: number }) {
   // checar se não existe outra embarcação em uma das posições do novo
   for (let index = 0; index < shipSize; index++) {
     if (vertical) {
-      if (playerGrid.value[i + index][j] === 3) {
+      if (playerGrid.value[i + index][j] === 'ship') {
         alert('Embarcações não podem se sobrepor')
         return 
       }
     } else {
-      if (playerGrid.value[i][j + index] === 3) {
+      if (playerGrid.value[i][j + index] === 'ship') {
         alert('Embarcações não podem se sobrepor')
         return 
       }
@@ -115,9 +115,9 @@ function handlePlace({i, j}: { i: number, j: number }) {
   // posicionar a embarcação
   for (let index = 0; index < shipSize; index++) {
     if (vertical) {
-      playerGrid.value[i + index][j] = 3
+      playerGrid.value[i + index][j] = 'ship'
     } else {
-      playerGrid.value[i][j + index] = 3
+      playerGrid.value[i][j + index] = 'ship'
     }
   }
 
@@ -125,7 +125,7 @@ function handlePlace({i, j}: { i: number, j: number }) {
 }
 
 function handleGuess({i, j}: { i: number, j: number }) {
-  if (enemyGrid.value[i][j] === 0) {
+  if (enemyGrid.value[i][j] === 'water') {
     window.electron.makeRequest('guess', [i, j])
   }
 }
@@ -135,17 +135,20 @@ window.electron.onMessageRecieved((_, msg) => {
   if (msg.type === 'REQUEST') {
     if (msg.payload.method === 'guess') {
       const [i, j] = msg.payload.args
+      const hit = playerGrid.value[i][j] === 'ship'
+
+      playerGrid.value[i][j] = hit ? 'hit-ship' : 'miss'
 
       window.electron.sendResponse(false, 'guess', {
         coords: [i, j],
-        result: playerGrid.value[i][j] === 3
+        result: hit
       })
     }
   } else if (msg.type === 'RESPONSE' && !msg.payload.failed) {
     if (msg.payload.responseTo === 'guess') {
       const [i, j] = msg.payload.message.coords
 
-      enemyGrid.value[i][j] = msg.payload.message.result ? 2 : 1
+      enemyGrid.value[i][j] = msg.payload.message.result ? 'hit' : 'miss'
     }
   } else {
     alert('oops')

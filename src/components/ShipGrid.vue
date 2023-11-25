@@ -64,21 +64,28 @@ function handleClick(event: { i: number, j: number }) {
   width: 40px;
   height: 40px;
   border: 1px solid black;
+  background-size: contain;
 }
 
-.type-0 {
-  background-color: #dfdfdf;
+.type-water {
+  background-image: url('/water.jpg');
 }
 
-.type-1 {
-  background-color: #c73230;
+.type-miss {
+  background-image: url('/splash.png'), url('/water.jpg');
+  
 }
 
-.type-2 {
-  background-color: #32a852;
+.type-hit {
+  background-image: url('/explosion.png'), url('/water.jpg');
 }
 
-.type-3 {
-  background-color: #51a9e8;
+.type-ship {
+  background-color: #747a86
+}
+
+.type-hit-ship {
+  background-image: url('/explosion.png');
+  background-color: #747a86;
 }
 </style>
