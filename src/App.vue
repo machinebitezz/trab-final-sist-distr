@@ -142,6 +142,7 @@ function allPlaced() {
 function handleGuess({i, j}: { i: number, j: number }) {
   if (!playerTurn.value) {
     alert('Não é a sua vez de jogar')
+    return
   }
 
   if (enemyGrid.value[i][j] === 'water') {
