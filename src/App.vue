@@ -140,8 +140,13 @@ function allPlaced() {
 }
 
 function handleGuess({i, j}: { i: number, j: number }) {
+  if (!playerTurn.value) {
+    alert('Não é a sua vez de jogar')
+  }
+
   if (enemyGrid.value[i][j] === 'water') {
     window.electron.makeRequest('guess', [i, j])
+    playerTurn.value = false
   }
 }
 
@@ -157,6 +162,10 @@ window.electron.onRequestRecieved('guess', (msg) => {
       coords: [i, j],
       result: hit
     })
+
+    playerTurn.value = true
+  } else {
+    window.electron.sendResponse(true, 'guess', '')
   }
 })
 
@@ -180,6 +189,11 @@ window.electron.onRequestRecieved('check-done', (msg) => {
 })
 
 window.electron.onResponseRecieved('guess', (msg) => {
+  if (msg.payload.failed) {
+    alert('Seu oponente ainda não terminou de posicionar as peças')
+    return
+  }
+
   const [i, j] = msg.payload.message.coords
   const hit = msg.payload.message.result
 
@@ -210,6 +224,7 @@ window.electron.onResponseRecieved('check-done', (msg) => {
     playerTurn.value = true
   } else {
     alert('Você não terminou de montar o tabuleiro em primeiro e será o segundo a jogar')
+    playerTurn.value = false
   }
 })
 
@@ -217,6 +232,11 @@ window.electron.onResponseRecieved('check-done', (msg) => {
 
 <template>
   <div>
+    <template v-if="playerTurn !== null">
+      <div>
+        {{ playerTurn ? 'É a sua vez' : 'É a vez do seu oponente' }}
+      </div>
+    </template>
     <div>
       Posicionando: {{ shipInfo[placing.piece].name }}
       <span v-show="placing.piece !== 'nothing'">

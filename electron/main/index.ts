@@ -3,7 +3,7 @@ import { release } from 'node:os'
 import { join } from 'node:path'
 import dgram from 'dgram'
 
-const ADDR = '127.0.0.1'
+const ADDR = '192.168.18.7'
 const PORT = 41235
 
 // The built directory structure

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { PlacingInfo } from './types'
 
-const props = defineProps<{
+defineProps<{
   grid: string[][]
   placing?: PlacingInfo
 }>()
