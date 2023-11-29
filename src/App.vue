@@ -207,7 +207,7 @@ window.electron.onResponseRecieved('guess', (msg) => {
   if (hit) {
     hits += 1
 
-    if (hits === 3) {
+    if (hits === 21) {
       window.electron.makeRequest('check-win', [])
     }
   }
