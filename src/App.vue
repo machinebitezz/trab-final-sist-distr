@@ -152,26 +152,25 @@ function handleGuess({i, j}: { i: number, j: number }) {
 }
 
 // lógica de mensagem
-window.electron.onRequestRecieved('guess', (msg) => {
+window.electron.onRequestRecieved('guess', (msg, respond) => {
   if (allPlaced()) {
     const [i, j] = msg.payload.args
     const hit = playerGrid.value[i][j] === 'ship'
 
     playerGrid.value[i][j] = hit ? 'hit-ship' : 'miss'
 
-    window.electron.sendResponse(false, 'guess', {
+    respond(false, {
       coords: [i, j],
       result: hit
     })
 
     playerTurn.value = true
   } else {
-    window.electron.sendResponse(true, 'guess', '')
+    respond(true, '')
   }
 })
 
-window.electron.onRequestRecieved('check-win', (msg) => {
-  console.log('aq')
+window.electron.onRequestRecieved('check-win', (msg, respond) => {
   let allSunk = 0
 
   playerGrid.value.forEach((row) => {
@@ -182,11 +181,18 @@ window.electron.onRequestRecieved('check-win', (msg) => {
     })
   })
 
-  window.electron.sendResponse(false, 'check-win', allSunk === 21)
+  const won = allSunk === 3
+
+  respond(false, won)
+
+  if (won) {
+    alert('Você perdeu')
+    window.location.reload()
+  }
 })
 
-window.electron.onRequestRecieved('check-done', (msg) => {
-  window.electron.sendResponse(false, 'check-done', allPlaced())
+window.electron.onRequestRecieved('check-done', (msg, respond) => {
+  respond(false, allPlaced())
 })
 
 window.electron.onResponseRecieved('guess', (msg) => {
@@ -201,13 +207,11 @@ window.electron.onResponseRecieved('guess', (msg) => {
   if (hit) {
     hits += 1
 
-    if (hits === 21) {
+    if (hits === 3) {
       window.electron.makeRequest('check-win', [])
-      alert('Você Perdeu')
       window.location.reload()
     }
   }
-  console.log(hits)
 
   enemyGrid.value[i][j] = hit ? 'hit' : 'miss'
 })
@@ -227,6 +231,11 @@ window.electron.onResponseRecieved('check-done', (msg) => {
     alert('Você não terminou de montar o tabuleiro em primeiro e será o segundo a jogar')
     playerTurn.value = false
   }
+})
+
+window.electron.onTimeout(() => {
+  alert('A conexão com seu oponente foi interrompida. A aplicação será reiniciada')
+  window.location.reload()
 })
 
 </script>

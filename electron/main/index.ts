@@ -29,8 +29,8 @@ process.env.VITE_PUBLIC = process.env.VITE_DEV_SERVER_URL
 if (process.platform === 'win32') app.setAppUserModelId(app.getName())
 
 if (!app.requestSingleInstanceLock()) {
-  app.quit()
-  process.exit(0)
+app.quit()
+process.exit(0)
 }
 
 // Remove electron security warnings
@@ -134,13 +134,43 @@ socket.on('listening', () => {
   console.log(`socket listening ${address.address}:${address.port}`)
 })
 
+const timeouts = {}
+
 ipcMain.on('comm:makeRequest', (_, method, args) => {
-  socket.send(JSON.stringify({
+  const timestamp = Date.now()
+
+  const msg = JSON.stringify({
     type: 'REQUEST',
     payload: {
-      method,
+      method: `${timestamp}\\${method}`,
       args
-  }}), PORT, ADDR)
+  }})
+
+  console.log(`Sending ${method} REQUEST with ${args} arguments`)
+  
+  socket.send(msg, PORT, ADDR)
+  
+  timeouts[timestamp] = {
+    count: 0,
+    id: {}
+  }
+  
+  timeouts[timestamp].id = setInterval(() => {
+    if (timeouts[timestamp]) {
+      timeouts[timestamp].count += 1
+      const { count, id } = timeouts[timestamp]
+      
+      if (count === 4) {
+        console.log(`${method} REQUEST failed, timed-out, resetting...`)
+        win.webContents.send('internal:timeout')
+        clearInterval(id)
+        return
+      }
+      
+      console.log(`${method} REQUEST failed, resending... (${timeouts[timestamp].count})`)
+      socket.send(msg, PORT, ADDR)
+    }
+  }, 5000)
 })
 
 ipcMain.on('comm:sendResponse', (_, failed, responseTo, message) => {
@@ -159,6 +189,14 @@ socket.on('message', (msg, rinfo) => {
   if (message.type === 'REQUEST') {
     win.webContents.send('comm:requestRecieved', [message, message.payload.method])
   } else if (message.type === 'RESPONSE') {
+    const [ timestamp, method ] = message.payload.responseTo.split('\\')
+    message.payload.responseTo = method
+
+    console.log(timeouts)
+    clearInterval(timeouts[timestamp].id)
+    delete timeouts[timestamp]
+    console.log(timeouts)
+
     win.webContents.send('comm:responseRecieved', [message, message.payload.responseTo])
   }
 })
