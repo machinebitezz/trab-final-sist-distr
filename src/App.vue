@@ -181,7 +181,7 @@ window.electron.onRequestRecieved('check-win', (msg, respond) => {
     })
   })
 
-  const won = allSunk === 3
+  const won = allSunk === 21
 
   respond(false, won)
 
