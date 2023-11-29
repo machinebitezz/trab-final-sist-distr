@@ -2,6 +2,7 @@ import { app, BrowserWindow, shell, ipcMain } from 'electron'
 import { release } from 'node:os'
 import { join } from 'node:path'
 import dgram from 'dgram'
+import colors from '@colors/colors'
 
 const ADDR = '192.168.18.7'
 const PORT = 41235
@@ -131,7 +132,7 @@ ipcMain.handle('open-win', (_, arg) => {
 const socket = dgram.createSocket('udp4')
 socket.on('listening', () => {
   const address = socket.address();
-  console.log(`socket listening ${address.address}:${address.port}`)
+  console.log(colors.brightBlue(`socket listening ${address.address}:${address.port}`))
 })
 
 const timeouts = {}
@@ -146,7 +147,7 @@ ipcMain.on('comm:makeRequest', (_, method, args) => {
       args
   }})
 
-  console.log(`Sending ${method} REQUEST with ${args} arguments`)
+  console.log(colors.brightCyan(`Sending ${method} REQUEST with ${args} arguments`))
   
   socket.send(msg, PORT, ADDR)
   
@@ -161,13 +162,13 @@ ipcMain.on('comm:makeRequest', (_, method, args) => {
       const { count, id } = timeouts[timestamp]
       
       if (count === 4) {
-        console.log(`${method} REQUEST failed, timed-out, resetting...`)
+        console.log(colors.bgBrightYellow(`${method} REQUEST failed, timed-out, resetting...`))
         win.webContents.send('internal:timeout')
         clearInterval(id)
         return
       }
       
-      console.log(`${method} REQUEST failed, resending... (${timeouts[timestamp].count})`)
+      console.log(colors.bgBrightRed(`${method} REQUEST failed, resending... (${timeouts[timestamp].count})`))
       socket.send(msg, PORT, ADDR)
     }
   }, 5000)
@@ -184,7 +185,7 @@ ipcMain.on('comm:sendResponse', (_, failed, responseTo, message) => {
 })
 
 socket.on('message', (msg, rinfo) => {
-  console.log(`socket got: ${msg} from ${rinfo.address}:${rinfo.port}`)
+  console.log(colors.green(`socket got: ${msg} from ${rinfo.address}:${rinfo.port}`))
   const message = JSON.parse(msg.toString())
   if (message.type === 'REQUEST') {
     win.webContents.send('comm:requestRecieved', [message, message.payload.method])
