@@ -192,10 +192,8 @@ socket.on('message', (msg, rinfo) => {
     const [ timestamp, method ] = message.payload.responseTo.split('\\')
     message.payload.responseTo = method
 
-    console.log(timeouts)
     clearInterval(timeouts[timestamp].id)
     delete timeouts[timestamp]
-    console.log(timeouts)
 
     win.webContents.send('comm:responseRecieved', [message, message.payload.responseTo])
   }

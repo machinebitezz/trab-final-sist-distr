@@ -209,7 +209,6 @@ window.electron.onResponseRecieved('guess', (msg) => {
 
     if (hits === 3) {
       window.electron.makeRequest('check-win', [])
-      window.location.reload()
     }
   }
 
