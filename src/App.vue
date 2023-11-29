@@ -7,8 +7,11 @@ import { ship, PlacingInfo } from './components/types'
 // peparar as grades
 const boardSize = 9
 const row = Array(boardSize).fill('water')
-const playerGrid = ref(Array(boardSize).fill([]))
-const enemyGrid = ref(Array(boardSize).fill([]))
+const playerGrid = ref<string[][]>(Array(boardSize).fill([]))
+const enemyGrid = ref<string[][]>(Array(boardSize).fill([]))
+const playerTurn = ref<boolean | null>(null)
+
+let hits = 0
 
 playerGrid.value.forEach((_, index) => {
   playerGrid.value[index] = row.map(x => x)
@@ -122,42 +125,128 @@ function handlePlace({i, j}: { i: number, j: number }) {
   }
 
   shipInfo.value[placing.value.piece].left -= 1
+
+  if (allPlaced()) {
+    window.electron.makeRequest('check-done', [])
+  }
+}
+
+function allPlaced() {
+  return Object.keys(shipInfo.value).reduce((acc, _ship) => {
+    const ship = shipInfo.value[(_ship as ship)]
+
+    return ship.left === 0 && acc
+  }, true)
 }
 
 function handleGuess({i, j}: { i: number, j: number }) {
+  if (!playerTurn.value) {
+    alert('Não é a sua vez de jogar')
+    return
+  }
+
   if (enemyGrid.value[i][j] === 'water') {
     window.electron.makeRequest('guess', [i, j])
+    playerTurn.value = false
   }
 }
 
 // lógica de mensagem
-window.electron.onMessageRecieved((_, msg) => {
-  if (msg.type === 'REQUEST') {
-    if (msg.payload.method === 'guess') {
-      const [i, j] = msg.payload.args
-      const hit = playerGrid.value[i][j] === 'ship'
+window.electron.onRequestRecieved('guess', (msg, respond) => {
+  if (allPlaced()) {
+    const [i, j] = msg.payload.args
+    const hit = playerGrid.value[i][j] === 'ship'
 
-      playerGrid.value[i][j] = hit ? 'hit-ship' : 'miss'
+    playerGrid.value[i][j] = hit ? 'hit-ship' : 'miss'
 
-      window.electron.sendResponse(false, 'guess', {
-        coords: [i, j],
-        result: hit
-      })
-    }
-  } else if (msg.type === 'RESPONSE' && !msg.payload.failed) {
-    if (msg.payload.responseTo === 'guess') {
-      const [i, j] = msg.payload.message.coords
+    respond(false, {
+      coords: [i, j],
+      result: hit
+    })
 
-      enemyGrid.value[i][j] = msg.payload.message.result ? 'hit' : 'miss'
-    }
+    playerTurn.value = true
   } else {
-    alert('oops')
+    respond(true, '')
   }
 })
+
+window.electron.onRequestRecieved('check-win', (msg, respond) => {
+  let allSunk = 0
+
+  playerGrid.value.forEach((row) => {
+    row.forEach((tile) => {
+      if (tile === 'hit-ship') {
+        allSunk += 1
+      }
+    })
+  })
+
+  const won = allSunk === 3
+
+  respond(false, won)
+
+  if (won) {
+    alert('Você perdeu')
+    window.location.reload()
+  }
+})
+
+window.electron.onRequestRecieved('check-done', (msg, respond) => {
+  respond(false, allPlaced())
+})
+
+window.electron.onResponseRecieved('guess', (msg) => {
+  if (msg.payload.failed) {
+    alert('Seu oponente ainda não terminou de posicionar as peças')
+    return
+  }
+
+  const [i, j] = msg.payload.message.coords
+  const hit = msg.payload.message.result
+
+  if (hit) {
+    hits += 1
+
+    if (hits === 3) {
+      window.electron.makeRequest('check-win', [])
+      window.location.reload()
+    }
+  }
+
+  enemyGrid.value[i][j] = hit ? 'hit' : 'miss'
+})
+
+window.electron.onResponseRecieved('check-win', (msg) => {
+  if (msg.payload.message) {
+    alert('Você Ganhou')
+    window.location.reload()
+  }
+})
+
+window.electron.onResponseRecieved('check-done', (msg) => {
+  if (!msg.payload.message) {
+    alert('Você terminou de montar o tabuleiro primeiro e será o primeiro a jogar')
+    playerTurn.value = true
+  } else {
+    alert('Você não terminou de montar o tabuleiro em primeiro e será o segundo a jogar')
+    playerTurn.value = false
+  }
+})
+
+window.electron.onTimeout(() => {
+  alert('A conexão com seu oponente foi interrompida. A aplicação será reiniciada')
+  window.location.reload()
+})
+
 </script>
 
 <template>
   <div>
+    <template v-if="playerTurn !== null">
+      <div>
+        {{ playerTurn ? 'É a sua vez' : 'É a vez do seu oponente' }}
+      </div>
+    </template>
     <div>
       Posicionando: {{ shipInfo[placing.piece].name }}
       <span v-show="placing.piece !== 'nothing'">

@@ -19,6 +19,8 @@ declare interface Window {
   electron: {
     makeRequest: (method: string, args: any[]) => void,
     sendResponse: (failed: boolean, responseTo: string, message: any) => void,
-    onMessageRecieved: (callback: (_: any, msg: request | response) => void) => void
+    onTimeout: (callback: () => void) => void,
+    onRequestRecieved: (method, callback: (msg: request, respond: (failed: boolean, message: any) => void) => void) => void
+    onResponseRecieved: (method, callback: (msg: response) => void) => void
   }
 }
